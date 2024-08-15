@@ -4,7 +4,6 @@
 
 // We make the complete Block and Header types publicly visible so that we can continue developing
 // against them in future chapters. The prior iterations are not available outside this chapter.
-pub use p6_rich_state::{Block, Header};
 
 mod p1_header_chain;
 mod p2_extrinsic_state;

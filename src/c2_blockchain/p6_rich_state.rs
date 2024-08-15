@@ -12,9 +12,9 @@
 //!
 //! This notion of state may sound familiar from our previous work on state machines. Indeed this
 //! naming coincidence foreshadows a key abstraction that we will make in a coming chapter.
-
-type Hash = u64;
+#[allow(unused, unused_variables)]
 use crate::hash;
+type Hash = u64;
 
 /// In this section we will use sum and product together to be our state. While this is only a
 /// doubling of state size remember that in real world blockchains, the state is often really really
@@ -205,7 +205,7 @@ fn bc_6_verify_three_blocks() {
 	let b1 = g.child(&state_1, vec![1]);
 	let state_2 = State { sum: 7, product: 9 };
 	let b2 = b1.child(&state_2, vec![2]);
-	let chain = vec![g.clone(), b1, b2];
+	let chain = [g.clone(), b1, b2];
 	assert!(g.verify_sub_chain(&state_1, &chain[1..]));
 }
 

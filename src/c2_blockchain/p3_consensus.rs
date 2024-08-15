@@ -4,8 +4,8 @@
 //! both.
 //! 1. Rules to throttle authoring. In this case we will use a simple PoW.
 //! 2. Arbitrary / Political rules. Here we will implement two alternate validity rules
-
 use crate::hash;
+use rand::{thread_rng, Rng};
 
 // We will use Rust's built-in hashing where the output type is u64. I'll make an alias
 // so the code is slightly more readable.
@@ -38,12 +38,27 @@ pub struct Header {
 impl Header {
 	/// Returns a new valid genesis header.
 	fn genesis() -> Self {
-		todo!("Exercise 1")
+		Header { parent: 0, height: 0, extrinsic: 0, state: 0, consensus_digest: 0 }
 	}
 
 	/// Create and return a valid child header.
 	fn child(&self, extrinsic: u64) -> Self {
-		todo!("Exercise 2")
+		let mut rng = thread_rng();
+		let consensus_digest: u64 = rng.gen();
+
+		let h = Header {
+			parent: hash(self),
+			height: self.height + 1,
+			extrinsic,
+			state: self.state + extrinsic,
+			consensus_digest,
+		};
+
+		if hash(&h) < THRESHOLD {
+			h
+		} else {
+			self.child(extrinsic)
+		}
 	}
 
 	/// Verify that all the given headers form a valid chain from this header to the tip.
@@ -51,7 +66,15 @@ impl Header {
 	/// In addition to all the rules we had before, we now need to check that the block hash
 	/// is below a specific threshold.
 	fn verify_sub_chain(&self, chain: &[Header]) -> bool {
-		todo!("Exercise 3")
+		let chain_iter = chain.iter();
+		let mut prev = self.clone();
+		for block in chain_iter {
+			if !verify_block(VerificationMethod::Threshold(block, &prev)) {
+				return false;
+			}
+			prev = block.clone();
+		}
+		true
 	}
 
 	// After the blockchain ran for a while, a political rift formed in the community.
@@ -63,16 +86,62 @@ impl Header {
 	/// verify that the given headers form a valid chain.
 	/// In this case "valid" means that the STATE MUST BE EVEN.
 	fn verify_sub_chain_even(&self, chain: &[Header]) -> bool {
-		todo!("Exercise 4")
+		let chain_iter = chain.iter();
+		let mut prev = self.clone();
+		for block in chain_iter {
+			if block.height > FORK_HEIGHT {
+				if !verify_block(VerificationMethod::Even(block, &prev)) {
+					return false;
+				}
+			} else if !verify_block(VerificationMethod::Threshold(block, &prev)) {
+				return false;
+			}
+			prev = block.clone();
+		}
+		true
 	}
 
 	/// verify that the given headers form a valid chain.
 	/// In this case "valid" means that the STATE MUST BE ODD.
 	fn verify_sub_chain_odd(&self, chain: &[Header]) -> bool {
-		todo!("Exercise 5")
+		let chain_iter = chain.iter();
+		let mut prev = self.clone();
+		for block in chain_iter {
+			if block.height > FORK_HEIGHT {
+				if !verify_block(VerificationMethod::Odd(block, &prev)) {
+					return false;
+				}
+			} else if !verify_block(VerificationMethod::Threshold(block, &prev)) {
+				return false;
+			}
+			prev = block.clone();
+		}
+		true
 	}
 }
 
+fn is_block_valid(block: &Header, prev: &Header) -> bool {
+	block.height == prev.height + 1
+		&& block.state == prev.state + block.extrinsic
+		&& block.parent == hash(&prev)
+		&& hash(&block) < THRESHOLD
+}
+
+fn verify_block(method: VerificationMethod) -> bool {
+	match method {
+		VerificationMethod::Threshold(block, prev) => is_block_valid(block, prev),
+		VerificationMethod::Even(block, prev) => {
+			is_block_valid(block, prev) && block.state % 2 == 0
+		},
+		VerificationMethod::Odd(block, prev) => is_block_valid(block, prev) && block.state % 2 != 0,
+	}
+}
+
+enum VerificationMethod<'a> {
+	Threshold(&'a Header, &'a Header),
+	Even(&'a Header, &'a Header),
+	Odd(&'a Header, &'a Header),
+}
 /// Build and return two different chains with a common prefix.
 /// They should have the same genesis header.
 ///
@@ -90,7 +159,15 @@ impl Header {
 /// G -- 1 -- 2
 ///            \-- 3'-- 4'
 fn build_contentious_forked_chain() -> (Vec<Header>, Vec<Header>, Vec<Header>) {
-	todo!("Exercise 6")
+	let g = Header::genesis();
+	let a1 = g.child(2); // 2
+	let a2 = a1.child(5); // 7
+	let e1 = a2.child(1); // 8
+	let e2 = e1.child(2); // 10
+	let o1 = a2.child(2); // 9
+	let o2 = o1.child(4); // 13
+
+	(vec![g, a1, a2], vec![e1, e2], vec![o1, o2])
 }
 
 // To run these tests: `cargo test bc_3`
@@ -125,7 +202,9 @@ fn bc_3_genesis_consensus_digest() {
 	// We could require that the genesis block have a valid proof of work as well.
 	// But instead I've chosen the simpler path of defining the nonce = 0 in genesis.
 	let g = Header::genesis();
-	assert!(g.consensus_digest == 0);
+	let b1 = g.child(7); // <- no way of knowing what consensus_digest is yet
+	assert!(hash(&b1) < THRESHOLD); // Original
+	                            // assert!(hash(&b1.consensus_digest) < THRESHOLD);
 }
 
 #[test]

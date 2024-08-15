@@ -6,9 +6,9 @@
 //!
 //! Since we have nothing to add to the Block or Header data structures in this lesson,
 //! we will import them from the previous lesson.
-
-use super::p4_batched_extrinsics::{Block, Header};
+#[allow(unused, unused_variables)]
 use crate::hash;
+use super::p4_batched_extrinsics::{Block, Header};
 
 const THRESHOLD: u64 = u64::max_value() / 100;
 
